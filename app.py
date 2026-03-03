@@ -19,27 +19,48 @@ def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
 def extract_fields(text):
-    amount_match = re.search(r'₹?\s?[\d,]+', text)
 
+    # -------- Amount Detection --------
     amount = None
+    amount_match = re.search(r'₹\s?[\d,]+', text)
     if amount_match:
-        raw_amount = amount_match.group()
-        clean_amount = raw_amount.replace("₹", "").replace(",", "").strip()
+        raw = amount_match.group()
+        clean = raw.replace("₹", "").replace(",", "").strip()
         try:
-            amount = float(clean_amount)
+            amount = float(clean)
         except:
             amount = None
 
-    fy_match = re.search(r'20\d{2}-\d{2}', text)
+    # Detect lakh format
+    lakh_match = re.search(r'₹?\s?([\d\.]+)\s*lakh', text, re.IGNORECASE)
+    if lakh_match:
+        try:
+            amount = float(lakh_match.group(1)) * 100000
+        except:
+            pass
+
+    # -------- Financial Year --------
+    fy_match = re.search(r'20\d{2}[-–]\d{2}', text)
     fy = fy_match.group() if fy_match else ""
 
-    object_head_match = re.search(r'Head\s?\d+|\d{4}\.\d+\.\d+', text)
+    # -------- Institute Detection --------
+    institute_match = re.search(r'NSTI\s?\(.*?\),?\s?[A-Za-z]+', text)
+    institute = institute_match.group() if institute_match else ""
+
+    # -------- Object Head --------
+    object_head_match = re.search(r'Professional Services\s?\(\d+\)', text)
     object_head = object_head_match.group() if object_head_match else ""
+
+    # -------- Subject --------
+    subject_match = re.search(r'Administrative Approval.*?Sanction.*', text)
+    subject = subject_match.group() if subject_match else ""
 
     return {
         "amount": amount,
         "financial_year": fy,
-        "object_head": object_head
+        "object_head": object_head,
+        "institute": institute,
+        "subject": subject
     }
 
     fy_match = re.search(r'20\d{2}-\d{2}', text)
@@ -139,10 +160,18 @@ async def process_file(profile_id: int, file: UploadFile = File(...)):
 
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO approvals (profile_id, amount, financial_year, object_head)
-        VALUES (%s, %s, %s, %s)
-    """, (profile_id, extracted["amount"], extracted["financial_year"], extracted["object_head"]))
+   cur.execute("""
+    INSERT INTO approvals 
+    (profile_id, institute, subject, amount, financial_year, object_head)
+    VALUES (%s, %s, %s, %s, %s, %s)
+""", (
+    profile_id,
+    extracted["institute"],
+    extracted["subject"],
+    extracted["amount"],
+    extracted["financial_year"],
+    extracted["object_head"]
+))
     conn.commit()
     conn.close()
 
@@ -171,5 +200,6 @@ def export_excel(profile_id: int):
     df.to_excel(file_name, index=False)
 
     return RedirectResponse(f"/dashboard/{profile_id}", status_code=303)
+
 
 
