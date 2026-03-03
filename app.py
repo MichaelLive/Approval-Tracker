@@ -20,7 +20,27 @@ def get_connection():
 
 def extract_fields(text):
     amount_match = re.search(r'₹?\s?[\d,]+', text)
-    amount = amount_match.group() if amount_match else ""
+
+    amount = None
+    if amount_match:
+        raw_amount = amount_match.group()
+        clean_amount = raw_amount.replace("₹", "").replace(",", "").strip()
+        try:
+            amount = float(clean_amount)
+        except:
+            amount = None
+
+    fy_match = re.search(r'20\d{2}-\d{2}', text)
+    fy = fy_match.group() if fy_match else ""
+
+    object_head_match = re.search(r'Head\s?\d+|\d{4}\.\d+\.\d+', text)
+    object_head = object_head_match.group() if object_head_match else ""
+
+    return {
+        "amount": amount,
+        "financial_year": fy,
+        "object_head": object_head
+    }
 
     fy_match = re.search(r'20\d{2}-\d{2}', text)
     fy = fy_match.group() if fy_match else ""
@@ -137,3 +157,4 @@ def export_excel(profile_id: int):
     df.to_excel(file_name, index=False)
 
     return RedirectResponse(f"/dashboard/{profile_id}", status_code=303)
+
