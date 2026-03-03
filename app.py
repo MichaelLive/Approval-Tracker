@@ -100,17 +100,17 @@ async def process_file(profile_id: int, file: UploadFile = File(...)):
     text = ""
 
     if file.filename.endswith(".pdf"):
-        with open("temp.pdf", "wb") as f:
+        with open("/tmp/temp.pdf", "wb") as f:
             f.write(content)
-        text = extract_text("temp.pdf")
-        os.remove("temp.pdf")
+        text = extract_text("/tmp/temp.pdf")
+        os.remove("/tmp/temp.pdf")
 
     elif file.filename.endswith(".docx"):
-        with open("temp.docx", "wb") as f:
+        with open("/tmp/temp.docx", "wb") as f:
             f.write(content)
-        doc = Document("temp.docx")
+        doc = Document("/tmp/temp.docx")
         text = "\n".join([p.text for p in doc.paragraphs])
-        os.remove("temp.docx")
+        os.remove("/tmp/temp.docx")
 
     else:
         text = content.decode()
@@ -135,4 +135,5 @@ def export_excel(profile_id: int):
     conn.close()
     file_name = f"export_{profile_id}.xlsx"
     df.to_excel(file_name, index=False)
+
     return RedirectResponse(f"/dashboard/{profile_id}", status_code=303)
