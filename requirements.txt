@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+psycopg2-binary
+jinja2
+python-multipart
+pandas
+openpyxl
+pdfminer.six
+python-docx
