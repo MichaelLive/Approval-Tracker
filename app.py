@@ -148,8 +148,22 @@ async def process_file(profile_id: int, file: UploadFile = File(...)):
 
     return RedirectResponse(f"/dashboard/{profile_id}", status_code=303)
 
+from fastapi.responses import FileResponse
+
 @app.get("/export/{profile_id}")
 def export_excel(profile_id: int):
+    conn = get_connection()
+    df = pd.read_sql(f"SELECT * FROM approvals WHERE profile_id={profile_id}", conn)
+    conn.close()
+
+    file_path = f"/tmp/export_{profile_id}.xlsx"
+    df.to_excel(file_path, index=False)
+
+    return FileResponse(
+        path=file_path,
+        filename=f"Approval_Export_{profile_id}.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     conn = get_connection()
     df = pd.read_sql(f"SELECT * FROM approvals WHERE profile_id={profile_id}", conn)
     conn.close()
@@ -157,4 +171,5 @@ def export_excel(profile_id: int):
     df.to_excel(file_name, index=False)
 
     return RedirectResponse(f"/dashboard/{profile_id}", status_code=303)
+
 
